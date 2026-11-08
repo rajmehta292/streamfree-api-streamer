@@ -8,6 +8,7 @@ let state = {
   liveOnly: false,
   sortBy: 'viewers',
   activeStream: null,
+  favorites: JSON.parse(localStorage.getItem('sf_favorites') || '[]'),
 };
 
 // Initialize Application
@@ -232,7 +233,18 @@ function renderCategoryPills() {
     <button class="category-pill ${state.selectedCategory === '' ? 'active' : ''}" data-category="">
       All Sports
     </button>
+    <button class="category-pill ${state.selectedCategory === '__favorites__' ? 'active' : ''}" data-category="__favorites__" style="color: #facc15; border-color: rgba(250, 204, 21, 0.3);">
+      ★ Watchlist (${state.favorites.length})
+    </button>
   `;
+
+  // Watchlist pill listener
+  container.querySelector('.category-pill[data-category="__favorites__"]').addEventListener('click', (e) => {
+    state.selectedCategory = '__favorites__';
+    document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    renderStreams();
+  });
 
   state.categories.forEach(cat => {
     const btn = document.createElement('button');
@@ -276,7 +288,9 @@ function renderStreams() {
   let filtered = [...state.streams];
 
   // Category filter
-  if (state.selectedCategory) {
+  if (state.selectedCategory === '__favorites__') {
+    filtered = filtered.filter(s => state.favorites.includes(s.stream_key));
+  } else if (state.selectedCategory) {
     filtered = filtered.filter(s => s.category.toLowerCase() === state.selectedCategory.toLowerCase());
   }
 
