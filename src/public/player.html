@@ -453,7 +453,7 @@
 
     async function initIntel() {
       try {
-        const res = await fetch('/api/v1/intel/' + encodeURIComponent(streamKey));
+        const res = await fetch('/api/v1/intel/' + encodeURIComponent(streamKey) + '?t=' + Date.now());
         if (res.ok) {
           proIntel = await res.json();
           renderProIntel(proIntel);

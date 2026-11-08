@@ -480,7 +480,7 @@ window.openPlayerModal = async function(streamKey) {
 
 async function fetchStreamIntel(streamKey) {
   try {
-    const res = await fetch(`/api/v1/intel/${encodeURIComponent(streamKey)}`);
+    const res = await fetch(`/api/v1/intel/${encodeURIComponent(streamKey)}?t=${Date.now()}`);
     if (res.ok) {
       const intel = await res.json();
       currentIntel = intel;
