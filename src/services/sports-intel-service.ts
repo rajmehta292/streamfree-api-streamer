@@ -135,7 +135,7 @@ class SportsIntelService {
         return espnData;
       }
     } catch (err) {
-      // Gracefully fall back to comprehensive reference generator
+      console.error(`[SportsIntelService] Error fetching ESPN intelligence for ${stream.stream_key}:`, err);
     }
 
     const fallback = this.generateComprehensiveFallback(stream);
@@ -367,11 +367,25 @@ class SportsIntelService {
     }> = [];
 
     if (summary.leaders && Array.isArray(summary.leaders)) {
-      for (const cat of summary.leaders.slice(0, 4)) {
+      const flatCats: any[] = [];
+      for (const item of summary.leaders) {
+        if (item.team && Array.isArray(item.leaders)) {
+          for (const subCat of item.leaders) {
+            flatCats.push({
+              ...subCat,
+              teamName: item.team?.displayName,
+            });
+          }
+        } else {
+          flatCats.push(item);
+        }
+      }
+
+      for (const cat of flatCats.slice(0, 6)) {
         const leaderObj = cat.leaders?.[0];
         if (leaderObj?.athlete) {
           leadersList.push({
-            category: cat.displayName || cat.name,
+            category: cat.displayName || cat.name || 'Key Leader',
             athlete: {
               id: leaderObj.athlete.id,
               name: leaderObj.athlete.displayName,
@@ -379,8 +393,8 @@ class SportsIntelService {
               position: leaderObj.athlete.position?.abbreviation,
               jersey: leaderObj.athlete.jersey,
             },
-            statline: leaderObj.displayValue,
-            teamName: leaderObj.team?.displayName,
+            statline: leaderObj.displayValue ? `${leaderObj.displayValue} ${cat.displayName || ''}`.trim() : (leaderObj.value ? String(leaderObj.value) : ''),
+            teamName: cat.teamName || leaderObj.team?.displayName,
           });
         }
       }
@@ -421,8 +435,8 @@ class SportsIntelService {
           }
 
           cats.push({
-            name: statCat.name,
-            displayName: statCat.displayName || statCat.name.toUpperCase(),
+            name: statCat.name || statCat.type || 'stats',
+            displayName: statCat.displayName || (statCat.name ? statCat.name.toUpperCase() : 'Full Team Stats'),
             labels: statCat.labels || [],
             athletes: catAthletes,
           });
@@ -460,6 +474,19 @@ class SportsIntelService {
           teamName: sp.team?.displayName || '',
           score: `${sp.awayScore || 0} - ${sp.homeScore || 0}`,
           description: sp.text || sp.type?.text || '',
+        });
+      }
+    } else if (summary.plays && Array.isArray(summary.plays)) {
+      // In basketball / soccer where scoringPlays is not present, extract latest plays
+      const recentPlays = summary.plays.slice(-8);
+      for (const sp of recentPlays) {
+        scoringPlaysList.push({
+          period: sp.period?.displayValue || `Period ${sp.period?.number || 1}`,
+          clock: sp.clock?.displayValue || '',
+          teamLogo: undefined,
+          teamName: sp.team?.id ? (sp.team.id === comp1.team?.id ? comp1.team?.displayName : comp2.team?.displayName) : '',
+          score: (sp.awayScore !== undefined && sp.homeScore !== undefined) ? `${sp.awayScore} - ${sp.homeScore}` : '',
+          description: sp.text || sp.shortDescription || 'Live play in action',
         });
       }
     }

@@ -200,7 +200,6 @@ export const apiRoutes: FastifyPluginAsync = async (fastify) => {
     const { stream_key } = request.params;
     let stream: StreamItem | null = await streamFreeClient.getStreamByKey(stream_key);
     if (!stream) {
-      // If stream is not in upstream catalog (e.g. direct link or custom key), synthesize stream item
       const cleanKey = decodeURIComponent(stream_key).replace(/[-_]/g, ' ');
       stream = {
         id: stream_key,
