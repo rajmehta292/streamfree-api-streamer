@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamFree API Streamer - High Performance Live Streaming</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+  <!-- Navigation Header -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </div>
+        <div class="brand-title">
+          STREAMFREE
+          <span class="brand-badge">API Streamer</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <button id="open-custom-stream-modal" class="btn btn-outline" style="border-color: rgba(145, 70, 255, 0.4);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Add Stream
+        </button>
+        <a href="/multiview.html" class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Multi-View
+        </a>
+        <a href="/api/v1/export/playlist.m3u" download="streamfree.m3u" class="btn btn-outline" title="Download IPTV M3U Playlist">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          IPTV .m3u
+        </a>
+        <a href="/docs" target="_blank" class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          Swagger Docs
+        </a>
+        <button id="open-embed-modal" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          Get Embed Code
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Controls & Search -->
+  <section class="hero-controls">
+    <div class="filter-bar">
+      <div class="search-box">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search matches, leagues, teams (e.g. Real Madrid, Lakers, UFC)...">
+      </div>
+
+      <div class="filter-options">
+        <label class="toggle-label">
+          <input type="checkbox" id="live-only-toggle">
+          <span>Live Broadcasts Only</span>
+        </label>
+
+        <select id="sort-select" class="custom-select">
+          <option value="viewers">Sort: Most Viewers</option>
+          <option value="time">Sort: Match Time</option>
+          <option value="name">Sort: Event Name</option>
+        </select>
+
+        <div id="connection-status" class="btn btn-outline btn-live-pulse" style="font-size: 11px; padding: 6px 10px;">
+          <span class="dot"></span>
+          <span id="connection-text">Real-Time Sync Active</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Category Pills -->
+  <nav class="category-scroller" id="category-pills">
+    <button class="category-pill active" data-category="">All Sports</button>
+    <!-- Categories injected dynamically -->
+  </nav>
+
+  <!-- Main Content: Streams Grid -->
+  <main class="main-container">
+    <div class="section-header">
+      <h2 class="section-title">
+        Available Broadcasts
+        <span class="streams-count" id="streams-count">(Loading...)</span>
+      </h2>
+      <div id="mirror-status" style="font-size: 12px; color: var(--text-dim);"></div>
+    </div>
+
+    <div class="streams-grid" id="streams-grid">
+      <!-- Injected by JavaScript -->
+    </div>
+  </main>
+
+  <!-- Video Watch Modal -->
+  <div class="modal-overlay" id="player-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="player-modal-title">Stream Player</div>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="player-frame-wrapper">
+        <iframe id="modal-iframe" src="" allow="fullscreen; picture-in-picture; autoplay" allowfullscreen></iframe>
+      </div>
+      <div class="modal-controls">
+        <div id="modal-stream-details" style="font-size: 13px; color: var(--text-muted);"></div>
+        <div style="display: flex; gap: 8px;">
+          <button id="modal-popout-btn" class="btn btn-outline" style="font-size: 12px;">Open in Tab</button>
+          <button id="modal-copy-embed" class="btn btn-primary" style="font-size: 12px;">Copy Embed</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Embed Generator Modal -->
+  <div class="modal-overlay" id="embed-generator-modal">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <div class="modal-title">Embed Code Generator</div>
+        <button class="modal-close" id="embed-modal-close-btn">&times;</button>
+      </div>
+      <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <p style="font-size: 13px; color: var(--text-muted);">
+          Embed live sports streams on any website or application using our responsive iframe generator.
+        </p>
+
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Select Stream</label>
+          <select id="embed-stream-select" class="custom-select" style="width: 100%;">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Width</label>
+            <input type="text" id="embed-width" class="custom-select" value="100%" style="width: 100%;">
+          </div>
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Height</label>
+            <input type="text" id="embed-height" class="custom-select" value="480" style="width: 100%;">
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Generated IFrame Snippet</label>
+          <div class="code-snippet" id="generated-snippet">&lt;iframe src="" width="100%" height="480" allow="fullscreen; picture-in-picture" allowfullscreen frameborder="0"&gt;&lt;/iframe&gt;</div>
+        </div>
+
+        <button id="copy-snippet-btn" class="btn btn-primary" style="justify-content: center;">
+          Copy IFrame Code
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Custom Stream Modal -->
+  <div class="modal-overlay" id="custom-stream-modal">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title">Add Custom Stream</div>
+        <button class="modal-close" id="custom-stream-close-btn">&times;</button>
+      </div>
+      <form id="custom-stream-form" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+        <p style="font-size: 13px; color: var(--text-muted);">
+          Broadcast your own live or on-demand stream (HLS .m3u8, RTMP, or MP4) alongside StreamFree feeds.
+        </p>
+
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Event / Stream Name *</label>
+          <input type="text" id="cs-name" class="custom-select" placeholder="e.g. Champions League Final (Community Cast)" style="width: 100%;" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Category *</label>
+            <input type="text" id="cs-category" class="custom-select" placeholder="e.g. soccer, basketball, gaming" style="width: 100%;" required>
+          </div>
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">League / Organization</label>
+            <input type="text" id="cs-league" class="custom-select" placeholder="e.g. Custom League" style="width: 100%;">
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Stream Key (URL-friendly ID) *</label>
+          <input type="text" id="cs-key" class="custom-select" placeholder="e.g. my-custom-stream" style="width: 100%;" required>
+        </div>
+
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">HLS Stream URL (.m3u8) or Direct Source *</label>
+          <input type="url" id="cs-source-url" class="custom-select" placeholder="https://example.com/live/index.m3u8" style="width: 100%;" required>
+        </div>
+
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px;">Thumbnail Image URL (optional)</label>
+          <input type="url" id="cs-thumbnail" class="custom-select" placeholder="https://images.unsplash.com/..." style="width: 100%;">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="justify-content: center; margin-top: 8px;">
+          Publish Custom Stream
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none;"></div>
+
+  <!-- Footer -->
+  <footer>
+    <div style="max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>StreamFree API Streamer &bull; High-Performance Engine</div>
+      <div style="display: flex; gap: 16px;">
+        <a href="/api/v1/categories" target="_blank">Categories API</a>
+        <a href="/api/v1/streams" target="_blank">Streams API</a>
+        <a href="/health" target="_blank">Health</a>
+        <a href="/docs" target="_blank">OpenAPI Docs</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
+

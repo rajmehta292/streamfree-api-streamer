@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  streamfree:
+    build: .
+    container_name: streamfree-api-streamer
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      - STREAMFREE_PRIMARY_MIRROR=https://strmfree.st
+      - STREAMFREE_FALLBACK_MIRRORS=https://streamfree.top,https://strmfree.link,https://strmfree.pk
+      - CACHE_TTL_STREAMS_MS=30000
+      - AUTO_REFRESH_INTERVAL_MS=30000
+

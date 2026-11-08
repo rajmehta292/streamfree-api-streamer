@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamFree Pro Player - Ad-Free Direct Streamer</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+  <style>
+    body {
+      background: #06070a;
+      overflow-y: auto;
+    }
+    .player-page-layout {
+      max-width: 1500px;
+      margin: 20px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+    }
+    .player-page-layout.theater-mode {
+      grid-template-columns: 1fr;
+    }
+    .main-stage {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .video-viewport {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    }
+    video#pro-video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    .iframe-fallback {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+    .player-controls-bar {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .match-banner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .match-headline {
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .match-subtext {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    /* Stats Overlay */
+    .stream-stats {
+      font-family: monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    /* Chat Sidebar */
+    .chat-sidebar {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 120px);
+      max-height: 800px;
+    }
+    .chat-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scrollbar-width: thin;
+    }
+    .chat-bubble {
+      font-size: 13px;
+      line-height: 1.4;
+      background: var(--bg-card);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      word-break: break-word;
+    }
+    .chat-user {
+      font-weight: 700;
+      color: #a78bfa;
+      margin-right: 6px;
+    }
+    .chat-badge {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #9146ff;
+      color: #fff;
+      margin-right: 6px;
+    }
+    .chat-input-bar {
+      padding: 12px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 8px;
+    }
+    .chat-input-bar input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      outline: none;
+    }
+    .chat-input-bar input:focus {
+      border-color: var(--accent);
+    }
+    @media (max-width: 992px) {
+      .player-page-layout { grid-template-columns: 1fr; }
+      .chat-sidebar { height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <a href="/" class="brand">
+          <div class="brand-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </div>
+          <div class="brand-title">
+            STREAMFREE
+            <span class="brand-badge">Pro Player</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="/" class="btn btn-outline">&larr; Back to Catalog</a>
+        <a href="/multiview.html" class="btn btn-outline">Multi-View</a>
+        <button id="copy-proxy-btn" class="btn btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          Copy Direct M3U8 Proxy URL
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="player-page-layout" id="player-layout">
+    <section class="main-stage">
+      <div class="video-viewport" id="video-wrapper">
+        <video id="pro-video" controls autoplay playsinline></video>
+        <iframe id="pro-iframe" class="iframe-fallback" style="display: none;" allow="fullscreen; picture-in-picture; autoplay" allowfullscreen></iframe>
+      </div>
+
+      <div class="player-controls-bar">
+        <div class="match-banner">
+          <div>
+            <div class="match-headline" id="player-stream-title">Loading Stream...</div>
+            <div class="match-subtext" id="player-stream-meta">Preparing low-latency broadcast</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <div class="stream-stats" id="stream-stats">
+            <span>Buffer: <strong id="stat-buffer">0s</strong></span>
+            <span>Latency: <strong id="stat-latency">-</strong></span>
+          </div>
+
+          <select id="quality-selector" class="custom-select" style="padding: 7px 12px; font-size: 12px;">
+            <option value="-1">Quality: Auto</option>
+          </select>
+
+          <button id="pip-btn" class="btn btn-outline" style="font-size: 12px; padding: 7px 12px;">PiP</button>
+          <button id="theater-btn" class="btn btn-outline" style="font-size: 12px; padding: 7px 12px;">Theater Mode</button>
+          <button id="toggle-chat-btn" class="btn btn-outline" style="font-size: 12px; padding: 7px 12px;">Toggle Chat</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Real-time Live Event Chat -->
+    <aside class="chat-sidebar" id="chat-sidebar">
+      <div class="chat-header">
+        <span>Live Match Chat</span>
+        <span class="status-badge is-live" style="font-size: 10px;">
+          <span class="dot"></span> Online
+        </span>
+      </div>
+
+      <div class="chat-messages" id="chat-messages-container">
+        <!-- Messages appended here -->
+      </div>
+
+      <form class="chat-input-bar" id="chat-form">
+        <input type="text" id="chat-input" placeholder="Say something in live chat..." maxlength="300" autocomplete="off">
+        <button type="submit" class="btn btn-primary" style="padding: 8px 14px;">Send</button>
+      </form>
+    </aside>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const streamKey = params.get('key') || 'custom-demo-stream';
+    const category = params.get('category') || 'sports';
+
+    let hlsInstance = null;
+    let streamData = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initStream();
+      setupChat();
+      setupControls();
+    });
+
+    async function initStream() {
+      try {
+        const res = await fetch('/api/v1/streams/' + encodeURIComponent(streamKey));
+        if (res.ok) {
+          streamData = await res.json();
+          document.getElementById('player-stream-title').textContent = streamData.name;
+          document.getElementById('player-stream-meta').textContent = `${streamData.league || streamData.category.toUpperCase()} • ${(streamData.viewers || 0).toLocaleString()} watching`;
+          loadPlayback(streamData);
+        } else {
+          document.getElementById('player-stream-title').textContent = streamKey;
+          loadFallbackEmbed();
+        }
+      } catch (e) {
+        loadFallbackEmbed();
+      }
+    }
+
+    function loadPlayback(stream) {
+      const video = document.getElementById('pro-video');
+      const iframe = document.getElementById('pro-iframe');
+
+      const liveSource = (stream.sources || []).find(s => s.live) || (stream.sources || [])[0];
+      const sourceUrl = liveSource ? liveSource.url : '';
+
+      // Direct M3U8 playback
+      if (sourceUrl.includes('.m3u8')) {
+        video.style.display = 'block';
+        iframe.style.display = 'none';
+
+        if (Hls.isSupported()) {
+          hlsInstance = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90,
+          });
+          hlsInstance.loadSource(sourceUrl);
+          hlsInstance.attachMedia(video);
+
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            const selector = document.getElementById('quality-selector');
+            selector.innerHTML = '<option value="-1">Quality: Auto</option>';
+            data.levels.forEach((level, index) => {
+              const opt = document.createElement('option');
+              opt.value = index;
+              opt.textContent = `${level.height}p (${Math.round(level.bitrate / 1000)} kbps)`;
+              selector.appendChild(opt);
+            });
+            video.play().catch(() => {});
+          });
+
+          hlsInstance.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+            const level = hlsInstance.levels[data.level];
+            if (level) {
+              document.getElementById('stat-latency').textContent = `${level.height}p`;
+            }
+          });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = sourceUrl;
+          video.play().catch(() => {});
+        }
+      } else {
+        // Fallback to embed
+        loadFallbackEmbed();
+      }
+    }
+
+    function loadFallbackEmbed() {
+      const video = document.getElementById('pro-video');
+      const iframe = document.getElementById('pro-iframe');
+      video.style.display = 'none';
+      iframe.style.display = 'block';
+      iframe.src = `/embed/${encodeURIComponent(category)}/${encodeURIComponent(streamKey)}?autoplay=1`;
+    }
+
+    function setupControls() {
+      const video = document.getElementById('pro-video');
+
+      // Quality change
+      document.getElementById('quality-selector').addEventListener('change', (e) => {
+        if (hlsInstance) {
+          hlsInstance.currentLevel = parseInt(e.target.value, 10);
+        }
+      });
+
+      // Picture-in-picture
+      document.getElementById('pip-btn').addEventListener('click', async () => {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else if (video.requestPictureInPicture) {
+          await video.requestPictureInPicture();
+        }
+      });
+
+      // Theater mode
+      document.getElementById('theater-btn').addEventListener('click', () => {
+        document.getElementById('player-layout').classList.toggle('theater-mode');
+      });
+
+      // Toggle Chat
+      document.getElementById('toggle-chat-btn').addEventListener('click', () => {
+        const chat = document.getElementById('chat-sidebar');
+        chat.style.display = chat.style.display === 'none' ? 'flex' : 'none';
+      });
+
+      // Copy Direct Proxy M3U8 URL
+      document.getElementById('copy-proxy-btn').addEventListener('click', () => {
+        const liveSource = streamData && streamData.sources ? (streamData.sources.find(s => s.live) || streamData.sources[0]) : null;
+        const targetUrl = liveSource ? liveSource.url : window.location.origin + `/embed/${category}/${streamKey}`;
+        const proxyUrl = `${window.location.origin}/api/v1/proxy/m3u8?url=${encodeURIComponent(targetUrl)}`;
+
+        navigator.clipboard.writeText(proxyUrl).then(() => {
+          const btn = document.getElementById('copy-proxy-btn');
+          const original = btn.innerHTML;
+          btn.textContent = 'M3U8 Proxy URL Copied!';
+          setTimeout(() => { btn.innerHTML = original; }, 2000);
+        });
+      });
+
+      // Stats updater loop
+      setInterval(() => {
+        if (video && video.buffered && video.buffered.length > 0) {
+          const t = video.currentTime;
+          let bufAhead = 0;
+          for (let i = 0; i < video.buffered.length; i++) {
+            if (video.buffered.start(i) <= t && t <= video.buffered.end(i)) {
+              bufAhead = video.buffered.end(i) - t;
+              break;
+            }
+          }
+          document.getElementById('stat-buffer').textContent = `${bufAhead.toFixed(1)}s`;
+        }
+      }, 1000);
+    }
+
+    // Live Event Chat Setup
+    function setupChat() {
+      const container = document.getElementById('chat-messages-container');
+      const form = document.getElementById('chat-form');
+      const input = document.getElementById('chat-input');
+
+      // Subscribe to chat SSE
+      try {
+        const es = new EventSource(`/api/v1/chat/${encodeURIComponent(streamKey)}/events`);
+
+        es.addEventListener('history', (e) => {
+          const msgs = JSON.parse(e.data);
+          container.innerHTML = '';
+          msgs.forEach(appendMessage);
+          container.scrollTop = container.scrollHeight;
+        });
+
+        es.addEventListener('chat_message', (e) => {
+          const msg = JSON.parse(e.data);
+          appendMessage(msg);
+          container.scrollTop = container.scrollHeight;
+        });
+      } catch (err) {}
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        input.value = '';
+        try {
+          await fetch(`/api/v1/chat/${encodeURIComponent(streamKey)}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: 'Fan_' + Math.floor(Math.random() * 900 + 100), message: text }),
+          });
+        } catch (err) {}
+      });
+
+      function appendMessage(msg) {
+        const div = document.createElement('div');
+        div.className = 'chat-bubble';
+        div.innerHTML = `
+          <span class="chat-badge">${escapeHtml(msg.badge || 'Viewer')}</span>
+          <span class="chat-user">${escapeHtml(msg.username)}:</span>
+          <span>${escapeHtml(msg.message)}</span>
+        `;
+        container.appendChild(div);
+      }
+
+      function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+    }
+  </script>
+</body>
+</html>
+
