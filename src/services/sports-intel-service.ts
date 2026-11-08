@@ -415,6 +415,9 @@ class SportsIntelService {
 
         for (const statCat of (pObj?.statistics || [])) {
           const catAthletes: AthleteInfo[] = [];
+          const starters: AthleteInfo[] = [];
+          const bench: AthleteInfo[] = [];
+
           for (const aObj of (statCat.athletes || [])) {
             const a = aObj.athlete || {};
             const athInfo: AthleteInfo = {
@@ -428,18 +431,45 @@ class SportsIntelService {
             };
             catAthletes.push(athInfo);
 
+            if (aObj.starter === true) {
+              starters.push(athInfo);
+            } else if (aObj.starter === false) {
+              bench.push(athInfo);
+            }
+
             if (a.id && !seenAthletes.has(a.id)) {
               seenAthletes.add(a.id);
               rosterArr.push(athInfo);
             }
           }
 
-          cats.push({
-            name: statCat.name || statCat.type || 'stats',
-            displayName: statCat.displayName || (statCat.name ? statCat.name.toUpperCase() : 'Full Team Stats'),
-            labels: statCat.labels || [],
-            athletes: catAthletes,
-          });
+          if (starters.length > 0 && bench.length > 0) {
+            cats.push({
+              name: 'starters',
+              displayName: 'Starters',
+              labels: statCat.labels || [],
+              athletes: starters,
+            });
+            cats.push({
+              name: 'bench',
+              displayName: 'Bench',
+              labels: statCat.labels || [],
+              athletes: bench,
+            });
+            cats.push({
+              name: 'all',
+              displayName: 'All Players',
+              labels: statCat.labels || [],
+              athletes: catAthletes,
+            });
+          } else {
+            cats.push({
+              name: statCat.name || statCat.type || 'stats',
+              displayName: statCat.displayName || (statCat.name ? statCat.name.toUpperCase() : 'Full Team Stats'),
+              labels: statCat.labels || [],
+              athletes: catAthletes,
+            });
+          }
         }
 
         return {
@@ -567,17 +597,59 @@ class SportsIntelService {
     const t1Name = stream.team1?.name || stream.name.split(/vs|at/i)[0]?.trim() || 'Team A';
     const t2Name = stream.team2?.name || stream.name.split(/vs|at/i)[1]?.trim() || 'Team B';
 
-    const mockAthletesT1: AthleteInfo[] = [
-      { id: 'ath_101', name: `${t1Name} QB1`, jersey: '7', position: isBasketball ? 'PG' : (isFootball ? 'QB' : 'FW'), headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['18/26', '245', '3 TD'], teamName: t1Name },
-      { id: 'ath_102', name: `${t1Name} RB1`, jersey: '22', position: isBasketball ? 'SG' : (isFootball ? 'RB' : 'MF'), headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['16 CAR', '98 YDS', '1 TD'], teamName: t1Name },
-      { id: 'ath_103', name: `${t1Name} WR1`, jersey: '11', position: isBasketball ? 'SF' : (isFootball ? 'WR' : 'DF'), headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['7 REC', '112 YDS', '2 TD'], teamName: t1Name },
-    ];
+    let mockAthletesT1: AthleteInfo[] = [];
+    let mockAthletesT2: AthleteInfo[] = [];
+    let t1Categories: BoxScoreCategory[] = [];
+    let t2Categories: BoxScoreCategory[] = [];
 
-    const mockAthletesT2: AthleteInfo[] = [
-      { id: 'ath_201', name: `${t2Name} Playmaker`, jersey: '10', position: isBasketball ? 'PG' : (isFootball ? 'QB' : 'FW'), headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['20/32', '210', '1 TD'], teamName: t2Name },
-      { id: 'ath_202', name: `${t2Name} Rusher`, jersey: '33', position: isBasketball ? 'PF' : (isFootball ? 'RB' : 'MF'), headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['14 CAR', '72 YDS', '0 TD'], teamName: t2Name },
-      { id: 'ath_203', name: `${t2Name} Target`, jersey: '88', position: isBasketball ? 'C' : (isFootball ? 'TE' : 'DF'), headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['5 REC', '64 YDS', '1 TD'], teamName: t2Name },
-    ];
+    if (isBasketball) {
+      mockAthletesT1 = [
+        { id: 'ath_b1', name: `${t1Name} Point Guard`, jersey: '3', position: 'PG', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['28', '22', '8-15', '3-6', '3-4', '4', '8'], teamName: t1Name },
+        { id: 'ath_b2', name: `${t1Name} Shooting Guard`, jersey: '11', position: 'SG', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['31', '18', '6-12', '4-7', '2-2', '3', '3'], teamName: t1Name },
+        { id: 'ath_b3', name: `${t1Name} Small Forward`, jersey: '23', position: 'SF', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['32', '19', '7-14', '2-4', '3-5', '7', '5'], teamName: t1Name },
+        { id: 'ath_b4', name: `${t1Name} Power Forward`, jersey: '15', position: 'PF', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['26', '12', '5-9', '0-1', '2-2', '9', '2'], teamName: t1Name },
+        { id: 'ath_b5', name: `${t1Name} Center`, jersey: '33', position: 'C', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['29', '14', '6-8', '0-0', '2-3', '11', '1'], teamName: t1Name },
+      ];
+
+      mockAthletesT2 = [
+        { id: 'ath_b6', name: `${t2Name} Point Guard`, jersey: '2', position: 'PG', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['30', '24', '9-17', '2-5', '4-4', '5', '7'], teamName: t2Name },
+        { id: 'ath_b7', name: `${t2Name} Shooting Guard`, jersey: '5', position: 'SG', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['29', '16', '6-13', '3-6', '1-2', '2', '4'], teamName: t2Name },
+        { id: 'ath_b8', name: `${t2Name} Small Forward`, jersey: '8', position: 'SF', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['28', '14', '5-11', '1-3', '3-3', '6', '2'], teamName: t2Name },
+        { id: 'ath_b9', name: `${t2Name} Power Forward`, jersey: '21', position: 'PF', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['27', '11', '4-8', '0-0', '3-4', '8', '1'], teamName: t2Name },
+        { id: 'ath_b10', name: `${t2Name} Center`, jersey: '0', position: 'C', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['31', '17', '7-10', '0-0', '3-5', '13', '2'], teamName: t2Name },
+      ];
+
+      const nbaLabels = ['MIN', 'PTS', 'FG', '3PT', 'FT', 'REB', 'AST'];
+      t1Categories = [{ name: 'starters', displayName: 'Starters', labels: nbaLabels, athletes: mockAthletesT1 }];
+      t2Categories = [{ name: 'starters', displayName: 'Starters', labels: nbaLabels, athletes: mockAthletesT2 }];
+    } else if (isSoccer) {
+      mockAthletesT1 = [
+        { id: 'ath_s1', name: `${t1Name} Striker`, jersey: '9', position: 'FW', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['90', '1', '0', '4', '2'], teamName: t1Name },
+        { id: 'ath_s2', name: `${t1Name} Playmaker`, jersey: '10', position: 'MF', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['90', '0', '1', '2', '1'], teamName: t1Name },
+        { id: 'ath_s3', name: `${t1Name} Winger`, jersey: '7', position: 'FW', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['78', '0', '1', '3', '1'], teamName: t1Name },
+      ];
+      mockAthletesT2 = [
+        { id: 'ath_s4', name: `${t2Name} Center Forward`, jersey: '9', position: 'FW', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['90', '1', '0', '3', '2'], teamName: t2Name },
+        { id: 'ath_s5', name: `${t2Name} Attacking Mid`, jersey: '11', position: 'MF', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['90', '0', '0', '1', '1'], teamName: t2Name },
+      ];
+      const soccerLabels = ['MIN', 'G', 'A', 'SH', 'SOG'];
+      t1Categories = [{ name: 'starters', displayName: 'Starting XI', labels: soccerLabels, athletes: mockAthletesT1 }];
+      t2Categories = [{ name: 'starters', displayName: 'Starting XI', labels: soccerLabels, athletes: mockAthletesT2 }];
+    } else {
+      mockAthletesT1 = [
+        { id: 'ath_f1', name: `${t1Name} Quarterback`, jersey: '7', position: 'QB', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['22/31', '270', '2', '0'], teamName: t1Name },
+        { id: 'ath_f2', name: `${t1Name} Running Back`, jersey: '22', position: 'RB', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['17', '94', '5.5', '1'], teamName: t1Name },
+        { id: 'ath_f3', name: `${t1Name} Wide Receiver`, jersey: '11', position: 'WR', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['8', '118', '14.8', '1'], teamName: t1Name },
+      ];
+      mockAthletesT2 = [
+        { id: 'ath_f4', name: `${t2Name} Quarterback`, jersey: '10', position: 'QB', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['19/33', '215', '1', '1'], teamName: t2Name },
+        { id: 'ath_f5', name: `${t2Name} Running Back`, jersey: '33', position: 'RB', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['14', '68', '4.9', '0'], teamName: t2Name },
+        { id: 'ath_f6', name: `${t2Name} Wide Receiver`, jersey: '88', position: 'WR', headshot: 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90', stats: ['6', '75', '12.5', '1'], teamName: t2Name },
+      ];
+      const passLabels = ['C/ATT', 'YDS', 'TD', 'INT'];
+      t1Categories = [{ name: 'passing', displayName: 'Passing', labels: passLabels, athletes: [mockAthletesT1[0]] }];
+      t2Categories = [{ name: 'passing', displayName: 'Passing', labels: passLabels, athletes: [mockAthletesT2[0]] }];
+    }
 
     return {
       stream_key: stream.stream_key,
@@ -612,13 +684,13 @@ class SportsIntelService {
         {
           category: isBasketball ? 'Top Scorer' : (isFootball ? 'Passing Leader' : 'Key Attacker'),
           athlete: mockAthletesT1[0],
-          statline: isBasketball ? '26 PTS, 7 AST' : (isFootball ? '245 YDS, 3 TD' : '1 Goal, 4 Shots'),
+          statline: isBasketball ? '22 PTS, 8 AST' : (isFootball ? '270 YDS, 2 TD' : '1 Goal, 4 Shots'),
           teamName: t1Name,
         },
         {
-          category: isBasketball ? 'Rebounds' : (isFootball ? 'Rushing Leader' : 'Midfield Anchor'),
-          athlete: mockAthletesT2[1],
-          statline: isBasketball ? '11 REB, 3 BLK' : (isFootball ? '72 YDS, 0 TD' : '88% Pass Accuracy'),
+          category: isBasketball ? 'Top Scorer' : (isFootball ? 'Passing Leader' : 'Midfield Anchor'),
+          athlete: mockAthletesT2[0],
+          statline: isBasketball ? '24 PTS, 7 AST' : (isFootball ? '215 YDS, 1 TD' : '90% Pass Accuracy'),
           teamName: t2Name,
         },
       ],
@@ -626,26 +698,12 @@ class SportsIntelService {
         team1: {
           teamName: t1Name,
           teamLogo: stream.team1?.logo || '',
-          categories: [
-            {
-              name: isFootball ? 'passing' : 'shooting',
-              displayName: isFootball ? 'Passing' : 'Starters',
-              labels: isFootball ? ['C/ATT', 'YDS', 'TD'] : ['PTS', 'REB', 'AST'],
-              athletes: mockAthletesT1,
-            },
-          ],
+          categories: t1Categories,
         },
         team2: {
           teamName: t2Name,
           teamLogo: stream.team2?.logo || '',
-          categories: [
-            {
-              name: isFootball ? 'passing' : 'shooting',
-              displayName: isFootball ? 'Passing' : 'Starters',
-              labels: isFootball ? ['C/ATT', 'YDS', 'TD'] : ['PTS', 'REB', 'AST'],
-              athletes: mockAthletesT2,
-            },
-          ],
+          categories: t2Categories,
         },
       },
       rosters: {
