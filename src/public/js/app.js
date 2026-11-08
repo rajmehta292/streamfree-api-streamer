@@ -64,6 +64,46 @@ function setupEventListeners() {
     }
   });
 
+  document.getElementById('modal-copy-m3u8').addEventListener('click', () => {
+    if (state.activeStream) {
+      copyProxyForStream(state.activeStream.stream_key, state.activeStream.category);
+    }
+  });
+
+  // Gamecast Tabs Switching
+  document.querySelectorAll('.gamecast-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.gamecast-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.gamecast-tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const tabId = btn.dataset.tab;
+      const targetPanel = document.getElementById(`tab-${tabId}`);
+      if (targetPanel) targetPanel.classList.add('active');
+    });
+  });
+
+  // Modal Chat Form
+  const modalChatForm = document.getElementById('modal-chat-form');
+  if (modalChatForm) {
+    modalChatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('modal-chat-input');
+      const text = input.value.trim();
+      if (!text || !state.activeStream) return;
+      input.value = '';
+      try {
+        await fetch(`/api/v1/chat/${encodeURIComponent(state.activeStream.stream_key)}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: 'Fan_' + Math.floor(Math.random() * 900 + 100),
+            message: text,
+          }),
+        });
+      } catch (err) {}
+    });
+  }
+
   // Embed Generator Modal
   const embedModal = document.getElementById('embed-generator-modal');
   document.getElementById('open-embed-modal').addEventListener('click', () => {
@@ -352,23 +392,200 @@ function renderStreams() {
   }).join('');
 }
 
-// Open Watch Modal
-window.openPlayerModal = function(streamKey) {
+let modalChatEventSource = null;
+
+// Open Watch Modal (Gamecast Hub)
+window.openPlayerModal = async function(streamKey) {
   const stream = state.streams.find(s => s.stream_key === streamKey);
   if (!stream) return;
 
   state.activeStream = stream;
   const modal = document.getElementById('player-modal');
   const iframe = document.getElementById('modal-iframe');
-  const title = document.getElementById('player-modal-title');
-  const details = document.getElementById('modal-stream-details');
 
-  title.textContent = stream.name;
-  details.innerHTML = `<strong>${stream.league || stream.category}</strong> &bull; ${(stream.viewers || 0).toLocaleString()} viewers &bull; Sources: ${(stream.sources || []).map(s => s.quality).join(', ')}`;
+  // Header Elements
+  document.getElementById('player-title-text').textContent = stream.name;
+  document.getElementById('player-league-badge').textContent = stream.league || stream.category.toUpperCase();
 
+  const proPlayerLink = document.getElementById('modal-pro-player-link');
+  if (proPlayerLink) {
+    proPlayerLink.href = `/player.html?key=${encodeURIComponent(stream.stream_key)}&category=${encodeURIComponent(stream.category)}`;
+  }
+
+  // Set default iframe embed
   iframe.src = `/embed/${encodeURIComponent(stream.category)}/${encodeURIComponent(stream.stream_key)}`;
   modal.classList.add('show');
+
+  // Initial Scoreboard state
+  const t1Name = stream.team1?.name || stream.name.split('vs')[0]?.trim() || 'Home';
+  const t2Name = stream.team2?.name || stream.name.split('vs')[1]?.trim() || 'Away';
+  document.getElementById('sb-team1-name').textContent = t1Name;
+  document.getElementById('sb-team2-name').textContent = t2Name;
+  document.getElementById('sb-team1-logo').src = stream.team1?.logo || 'https://via.placeholder.com/80/9146ff/fff?text=' + t1Name.slice(0, 3).toUpperCase();
+  document.getElementById('sb-team2-logo').src = stream.team2?.logo || 'https://via.placeholder.com/80/00f2fe/000?text=' + t2Name.slice(0, 3).toUpperCase();
+  document.getElementById('sb-status-text').textContent = (stream.sources || []).some(s => s.live) ? 'LIVE' : 'UPCOMING';
+  document.getElementById('sb-venue-text').textContent = `${stream.category.toUpperCase()} • ${(stream.viewers || 0).toLocaleString()} viewers`;
+
+  // Start live chat connection
+  setupModalChat(stream.stream_key);
+
+  // Fetch Sports Intelligence (ESPN / StatMuse Live Stats & News)
+  try {
+    const res = await fetch(`/api/v1/intel/${encodeURIComponent(stream.stream_key)}`);
+    if (res.ok) {
+      const intel = await res.json();
+      renderGamecastIntel(intel);
+    }
+  } catch (err) {
+    console.error('Failed to load sports intelligence:', err);
+  }
 };
+
+function renderGamecastIntel(intel) {
+  if (!intel) return;
+
+  // 1. Scoreboard Update
+  if (intel.scoreboard) {
+    document.getElementById('sb-team1-score').textContent = intel.scoreboard.team1.score || '0';
+    document.getElementById('sb-team2-score').textContent = intel.scoreboard.team2.score || '0';
+    if (intel.scoreboard.team1.record) document.getElementById('sb-team1-record').textContent = intel.scoreboard.team1.record;
+    if (intel.scoreboard.team2.record) document.getElementById('sb-team2-record').textContent = intel.scoreboard.team2.record;
+    if (intel.scoreboard.detail) document.getElementById('sb-status-text').textContent = intel.scoreboard.detail;
+
+    const downDistEl = document.getElementById('sb-down-dist');
+    if (intel.scoreboard.downDistance) {
+      downDistEl.textContent = intel.scoreboard.downDistance;
+      downDistEl.style.display = 'block';
+    } else {
+      downDistEl.style.display = 'none';
+    }
+  }
+
+  // 2. Win Probability Bar
+  const winProbWrap = document.getElementById('win-prob-wrapper');
+  if (intel.winProbability && winProbWrap) {
+    winProbWrap.style.display = 'flex';
+    document.getElementById('win-prob-t1-label').textContent = `${intel.scoreboard.team1.name} Win: ${intel.winProbability.team1Percentage}%`;
+    document.getElementById('win-prob-t2-label').textContent = `${intel.scoreboard.team2.name} Win: ${intel.winProbability.team2Percentage}%`;
+    document.getElementById('win-prob-bar-home').style.width = `${intel.winProbability.team1Percentage}%`;
+    document.getElementById('win-prob-bar-away').style.width = `${intel.winProbability.team2Percentage}%`;
+  }
+
+  // 3. Game Info
+  if (intel.gameInfo) {
+    if (intel.gameInfo.venue) document.getElementById('sb-venue-text').textContent = `📍 ${intel.gameInfo.venue}${intel.gameInfo.city ? ', ' + intel.gameInfo.city : ''}`;
+    if (intel.gameInfo.odds) document.getElementById('sb-odds-text').textContent = `🎲 Odds: ${intel.gameInfo.odds}${intel.gameInfo.overUnder ? ' (' + intel.gameInfo.overUnder + ')' : ''}`;
+    if (intel.gameInfo.broadcast) document.getElementById('sb-broadcast-text').textContent = `📺 ${intel.gameInfo.broadcast}`;
+  }
+
+  // 4. Tab 1: Live Stats Comparison (ESPN / Yahoo style)
+  const statsContainer = document.getElementById('gamecast-stats-container');
+  if (intel.stats && intel.stats.length > 0) {
+    statsContainer.innerHTML = intel.stats.map(s => `
+      <div class="stat-row">
+        <div class="stat-labels">
+          <span class="stat-team1-val">${escapeHtml(s.team1Value)}</span>
+          <span class="stat-name">${escapeHtml(s.label)}</span>
+          <span class="stat-team2-val">${escapeHtml(s.team2Value)}</span>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    statsContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">Live statistics will appear once play starts.</div>`;
+  }
+
+  // 5. Tab 2: Key Leaders (StatMuse / Reference style)
+  const leadersContainer = document.getElementById('gamecast-leaders-container');
+  if (intel.leaders && intel.leaders.length > 0) {
+    leadersContainer.innerHTML = intel.leaders.map(l => `
+      <div class="leader-card">
+        <img class="leader-avatar" src="${escapeHtml(l.athlete.headshot)}" alt="${escapeHtml(l.athlete.name)}" onerror="this.src='https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90'">
+        <div class="leader-info">
+          <span class="leader-cat">${escapeHtml(l.category)}</span>
+          <span class="leader-name">${escapeHtml(l.athlete.name)} ${l.athlete.jersey ? '#' + escapeHtml(l.athlete.jersey) : ''}</span>
+          <span class="leader-stat">${escapeHtml(l.statline)}</span>
+          <span style="font-size: 11px; color: var(--text-dim);">${escapeHtml(l.teamName || '')}</span>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    leadersContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">Key leaders will be highlighted during game action.</div>`;
+  }
+
+  // 6. Tab 3: Scoring Timeline
+  const scoringContainer = document.getElementById('gamecast-scoring-container');
+  if (intel.scoringPlays && intel.scoringPlays.length > 0) {
+    scoringContainer.innerHTML = intel.scoringPlays.map(p => `
+      <div class="play-item">
+        <div class="play-period">${escapeHtml(p.period)} ${p.clock ? '<br>' + escapeHtml(p.clock) : ''}</div>
+        <div class="play-body">
+          <div class="play-score">${p.teamName ? escapeHtml(p.teamName) + ' • ' : ''}Score: ${escapeHtml(p.score)}</div>
+          <div class="play-desc">${escapeHtml(p.description)}</div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    scoringContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">No scoring plays yet.</div>`;
+  }
+
+  // 7. Tab 4: News & Analysis
+  const newsContainer = document.getElementById('gamecast-news-container');
+  if (intel.news && intel.news.length > 0) {
+    newsContainer.innerHTML = intel.news.map(n => `
+      <div class="news-card">
+        ${n.image ? `<img src="${escapeHtml(n.image)}" alt="News image" loading="lazy">` : ''}
+        <div class="news-body">
+          <div class="news-headline">${escapeHtml(n.title)}</div>
+          <div class="news-summary">${escapeHtml(n.description)}</div>
+          <a href="${escapeHtml(n.link)}" target="_blank" class="news-link">Read Full Coverage &rarr;</a>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    newsContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">No recent editorial news found for this match.</div>`;
+  }
+}
+
+// Modal Live Chat
+function setupModalChat(streamKey) {
+  if (modalChatEventSource) {
+    modalChatEventSource.close();
+    modalChatEventSource = null;
+  }
+
+  const container = document.getElementById('modal-chat-messages');
+  if (!container) return;
+  container.innerHTML = '<div style="color: var(--text-dim); font-size: 12px; padding: 10px; text-align: center;">Connecting to live stream chat...</div>';
+
+  try {
+    modalChatEventSource = new EventSource(`/api/v1/chat/${encodeURIComponent(streamKey)}/events`);
+
+    modalChatEventSource.addEventListener('history', (e) => {
+      const msgs = JSON.parse(e.data);
+      container.innerHTML = '';
+      msgs.forEach(appendModalChatMessage);
+      container.scrollTop = container.scrollHeight;
+    });
+
+    modalChatEventSource.addEventListener('chat_message', (e) => {
+      const msg = JSON.parse(e.data);
+      appendModalChatMessage(msg);
+      container.scrollTop = container.scrollHeight;
+    });
+  } catch (e) {}
+
+  function appendModalChatMessage(msg) {
+    const div = document.createElement('div');
+    div.className = 'chat-bubble';
+    div.style.margin = '4px 8px';
+    div.innerHTML = `
+      <span class="chat-badge">${escapeHtml(msg.badge || 'Fan')}</span>
+      <span class="chat-user">${escapeHtml(msg.username)}:</span>
+      <span>${escapeHtml(msg.message)}</span>
+    `;
+    container.appendChild(div);
+  }
+}
 
 function closePlayerModal() {
   const modal = document.getElementById('player-modal');
@@ -376,6 +593,11 @@ function closePlayerModal() {
   iframe.src = '';
   modal.classList.remove('show');
   state.activeStream = null;
+
+  if (modalChatEventSource) {
+    modalChatEventSource.close();
+    modalChatEventSource = null;
+  }
 }
 
 // Embed Helpers

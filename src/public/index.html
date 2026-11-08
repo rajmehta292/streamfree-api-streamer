@@ -118,21 +118,145 @@
     </div>
   </main>
 
-  <!-- Video Watch Modal -->
+  <!-- Ultimate Sports Gamecast & Watch Modal -->
   <div class="modal-overlay" id="player-modal">
     <div class="modal-content">
+      <!-- Modal Header with Quick Action Bar -->
       <div class="modal-header">
-        <div class="modal-title" id="player-modal-title">Stream Player</div>
-        <button class="modal-close" id="modal-close-btn">&times;</button>
+        <div class="modal-title" id="player-modal-title">
+          <span class="dot"></span>
+          <span id="player-title-text">Stream Player</span>
+          <span class="brand-badge" id="player-league-badge" style="font-size: 10px;">LIVE</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <a id="modal-pro-player-link" href="#" target="_blank" class="btn btn-outline" style="font-size: 11px; padding: 6px 10px;">
+            Pro Player &rarr;
+          </a>
+          <button id="modal-popout-btn" class="btn btn-outline" style="font-size: 11px; padding: 6px 10px;" title="Open in new window">
+            Popout
+          </button>
+          <button id="modal-copy-embed" class="btn btn-outline" style="font-size: 11px; padding: 6px 10px;">
+            Embed
+          </button>
+          <button id="modal-copy-m3u8" class="btn btn-outline" style="font-size: 11px; padding: 6px 10px;" title="Copy M3U8 Proxy URL">
+            M3U8
+          </button>
+          <button class="modal-close" id="modal-close-btn" title="Close player">&times;</button>
+        </div>
       </div>
+
+      <!-- ESPN / Google Sports Style Gamecast Scoreboard Strip -->
+      <div class="gamecast-scoreboard" id="gamecast-scoreboard">
+        <div class="scoreboard-matchup">
+          <!-- Team 1 -->
+          <div class="scoreboard-team home">
+            <img class="team-icon" id="sb-team1-logo" src="" alt="Team 1">
+            <div class="scoreboard-team-info">
+              <span class="scoreboard-team-name" id="sb-team1-name">Home Team</span>
+              <span class="scoreboard-team-record" id="sb-team1-record">--</span>
+            </div>
+            <div class="scoreboard-score" id="sb-team1-score">-</div>
+          </div>
+
+          <!-- Status Center -->
+          <div class="scoreboard-status-center">
+            <div class="game-clock-pill" id="sb-status-pill">
+              <span class="dot"></span>
+              <span id="sb-status-text">LIVE</span>
+            </div>
+            <div class="game-down-dist" id="sb-down-dist"></div>
+          </div>
+
+          <!-- Team 2 -->
+          <div class="scoreboard-team away">
+            <img class="team-icon" id="sb-team2-logo" src="" alt="Team 2">
+            <div class="scoreboard-team-info">
+              <span class="scoreboard-team-name" id="sb-team2-name">Away Team</span>
+              <span class="scoreboard-team-record" id="sb-team2-record">--</span>
+            </div>
+            <div class="scoreboard-score" id="sb-team2-score">-</div>
+          </div>
+        </div>
+
+        <!-- Win Probability Bar -->
+        <div class="win-prob-wrapper" id="win-prob-wrapper" style="display: none;">
+          <div class="win-prob-header">
+            <span id="win-prob-t1-label">Home Win: 50%</span>
+            <span id="win-prob-t2-label">Away Win: 50%</span>
+          </div>
+          <div class="win-prob-bar">
+            <div class="win-prob-home" id="win-prob-bar-home" style="width: 50%;"></div>
+            <div class="win-prob-away" id="win-prob-bar-away" style="width: 50%;"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-dim); margin-top: 2px;">
+          <span id="sb-venue-text">Stadium Venue</span>
+          <span id="sb-odds-text"></span>
+          <span id="sb-broadcast-text">HD Broadcast</span>
+        </div>
+      </div>
+
+      <!-- Player Stage -->
       <div class="player-frame-wrapper">
         <iframe id="modal-iframe" src="" allow="fullscreen; picture-in-picture; autoplay" allowfullscreen></iframe>
       </div>
-      <div class="modal-controls">
-        <div id="modal-stream-details" style="font-size: 13px; color: var(--text-muted);"></div>
-        <div style="display: flex; gap: 8px;">
-          <button id="modal-popout-btn" class="btn btn-outline" style="font-size: 12px;">Open in Tab</button>
-          <button id="modal-copy-embed" class="btn btn-primary" style="font-size: 12px;">Copy Embed</button>
+
+      <!-- Gamecast Tabs Navigation -->
+      <div class="gamecast-tabs-nav">
+        <button class="gamecast-tab-btn active" data-tab="stats">
+          📊 Match Stats
+        </button>
+        <button class="gamecast-tab-btn" data-tab="leaders">
+          🌟 Key Leaders
+        </button>
+        <button class="gamecast-tab-btn" data-tab="scoring">
+          📜 Scoring Timeline
+        </button>
+        <button class="gamecast-tab-btn" data-tab="news">
+          📰 News & Analysis
+        </button>
+        <button class="gamecast-tab-btn" data-tab="chat">
+          💬 Live Banter
+        </button>
+      </div>
+
+      <!-- Tab 1: Stats Comparison (ESPN / Yahoo Style) -->
+      <div class="gamecast-tab-panel active" id="tab-stats">
+        <div class="stats-table" id="gamecast-stats-container">
+          <div style="text-align: center; color: var(--text-dim); padding: 20px;">Loading live team metrics...</div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Key Leaders (StatMuse / Reference Style) -->
+      <div class="gamecast-tab-panel" id="tab-leaders">
+        <div class="leaders-grid" id="gamecast-leaders-container">
+          <div style="text-align: center; color: var(--text-dim); padding: 20px;">Loading player highlights...</div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Scoring Plays Timeline -->
+      <div class="gamecast-tab-panel" id="tab-scoring">
+        <div class="plays-timeline" id="gamecast-scoring-container">
+          <div style="text-align: center; color: var(--text-dim); padding: 20px;">No scoring events recorded yet.</div>
+        </div>
+      </div>
+
+      <!-- Tab 4: News & Analysis -->
+      <div class="gamecast-tab-panel" id="tab-news">
+        <div class="news-grid" id="gamecast-news-container">
+          <div style="text-align: center; color: var(--text-dim); padding: 20px;">Fetching breaking match news...</div>
+        </div>
+      </div>
+
+      <!-- Tab 5: Live Chat -->
+      <div class="gamecast-tab-panel" id="tab-chat">
+        <div style="display: flex; flex-direction: column; gap: 12px; max-width: 650px; margin: 0 auto;">
+          <div class="chat-messages" id="modal-chat-messages" style="height: 240px; background: #08090d; border: 1px solid var(--border-color); border-radius: 8px;"></div>
+          <form class="chat-input-bar" id="modal-chat-form" style="border: none; padding: 0;">
+            <input type="text" id="modal-chat-input" placeholder="Drop a thought about the game..." maxlength="300" autocomplete="off">
+            <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">Send</button>
+          </form>
         </div>
       </div>
     </div>

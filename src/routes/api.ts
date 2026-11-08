@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { streamFreeClient } from '../services/streamfree-client.js';
 import { customStreamsService } from '../services/custom-streams.js';
 import { sseService } from '../services/sse-service.js';
+import { sportsIntelService } from '../services/sports-intel-service.js';
 import type { FeedbackInput, StreamItem } from '../types/stream.js';
 
 export const apiRoutes: FastifyPluginAsync = async (fastify) => {
@@ -175,6 +176,38 @@ export const apiRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
     return reply.send(sources);
+  });
+
+  /**
+   * GET /api/v1/intel/:stream_key
+   * Live gamecast statistics, box score, key leaders (StatMuse/Reference), win probability, and news
+   */
+  fastify.get<{
+    Params: { stream_key: string };
+  }>('/intel/:stream_key', {
+    schema: {
+      description: 'Get deep gamecast live stats, boxscore, team comparison, StatMuse-style leaders, and news',
+      tags: ['Sports Intelligence'],
+      params: {
+        type: 'object',
+        properties: {
+          stream_key: { type: 'string' },
+        },
+        required: ['stream_key'],
+      },
+    },
+  }, async (request, reply) => {
+    const { stream_key } = request.params;
+    const stream = await streamFreeClient.getStreamByKey(stream_key);
+    if (!stream) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: `Stream '${stream_key}' not found.`,
+      });
+    }
+
+    const intel = await sportsIntelService.getGamecastIntel(stream);
+    return reply.send(intel);
   });
 
   /**
