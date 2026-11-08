@@ -204,7 +204,13 @@
 
       <!-- Gamecast Tabs Navigation -->
       <div class="gamecast-tabs-nav">
-        <button class="gamecast-tab-btn active" data-tab="stats">
+        <button class="gamecast-tab-btn active" data-tab="boxscore">
+          📋 Box Score
+        </button>
+        <button class="gamecast-tab-btn" data-tab="rosters">
+          👥 Rosters
+        </button>
+        <button class="gamecast-tab-btn" data-tab="stats">
           📊 Match Stats
         </button>
         <button class="gamecast-tab-btn" data-tab="leaders">
@@ -221,8 +227,33 @@
         </button>
       </div>
 
+      <!-- Tab 0: Box Score (Player by Player with Categories) -->
+      <div class="gamecast-tab-panel active" id="tab-boxscore">
+        <div class="boxscore-wrapper">
+          <div class="boxscore-team-selector" id="boxscore-team-nav">
+            <!-- Dynamic team buttons injected here -->
+          </div>
+          <div class="boxscore-cat-pills" id="boxscore-cat-pills">
+            <!-- Passing, Rushing, etc. pills -->
+          </div>
+          <div class="boxscore-table-responsive" id="boxscore-table-container">
+            <div style="text-align: center; color: var(--text-dim); padding: 24px;">Select a team and category to view individual box score stats.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 0.5: Team Rosters -->
+      <div class="gamecast-tab-panel" id="tab-rosters">
+        <div style="display: flex; gap: 8px; margin-bottom: 14px;" id="roster-team-nav">
+          <!-- Dynamic team selector for rosters -->
+        </div>
+        <div class="roster-grid" id="roster-grid-container">
+          <div style="text-align: center; color: var(--text-dim); padding: 24px;">Loading team rosters...</div>
+        </div>
+      </div>
+
       <!-- Tab 1: Stats Comparison (ESPN / Yahoo Style) -->
-      <div class="gamecast-tab-panel active" id="tab-stats">
+      <div class="gamecast-tab-panel" id="tab-stats">
         <div class="stats-table" id="gamecast-stats-container">
           <div style="text-align: center; color: var(--text-dim); padding: 20px;">Loading live team metrics...</div>
         </div>
@@ -257,6 +288,46 @@
             <input type="text" id="modal-chat-input" placeholder="Drop a thought about the game..." maxlength="300" autocomplete="off">
             <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">Send</button>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- StatMuse / Reference Grade Athlete Profile Modal -->
+  <div class="modal-overlay" id="player-profile-modal">
+    <div class="profile-modal-content">
+      <div style="position: absolute; top: 14px; right: 16px; z-index: 10;">
+        <button class="modal-close" id="profile-modal-close-btn">&times;</button>
+      </div>
+
+      <div class="profile-hero">
+        <img class="profile-large-headshot" id="prof-headshot" src="" alt="Athlete">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px; font-weight: 900; color: #fff;" id="prof-name">Athlete Name</span>
+            <span class="brand-badge" id="prof-jersey">#0</span>
+          </div>
+          <div style="font-size: 13px; color: #a78bfa; font-weight: 700;" id="prof-team-pos">Team • Position</div>
+          <div class="profile-meta-pills">
+            <span class="profile-pill" id="prof-ht-wt">--</span>
+            <span class="profile-pill" id="prof-age">--</span>
+            <span class="profile-pill" id="prof-college">--</span>
+            <span class="profile-pill" id="prof-exp">--</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px 0; font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">
+        Player Performance & In-Game Overview
+      </div>
+
+      <div class="profile-stats-grid" id="prof-stats-grid">
+        <!-- Injected stat boxes -->
+      </div>
+
+      <div style="padding: 0 20px 20px;" id="prof-bio-wrapper">
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5; background: var(--bg-card); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-color);" id="prof-bio-text">
+          Athlete bio information.
         </div>
       </div>
     </div>

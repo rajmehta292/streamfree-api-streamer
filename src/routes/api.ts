@@ -198,16 +198,49 @@ export const apiRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     const { stream_key } = request.params;
-    const stream = await streamFreeClient.getStreamByKey(stream_key);
+    let stream: StreamItem | null = await streamFreeClient.getStreamByKey(stream_key);
     if (!stream) {
-      return reply.status(404).send({
-        error: 'Not Found',
-        message: `Stream '${stream_key}' not found.`,
-      });
+      // If stream is not in upstream catalog (e.g. direct link or custom key), synthesize stream item
+      const cleanKey = decodeURIComponent(stream_key).replace(/[-_]/g, ' ');
+      stream = {
+        id: stream_key,
+        name: cleanKey.replace(/\b\w/g, l => l.toUpperCase()),
+        category: 'football',
+        league: 'NFL',
+        stream_key,
+        match_timestamp: Math.floor(Date.now() / 1000),
+        sources: [],
+      };
     }
 
     const intel = await sportsIntelService.getGamecastIntel(stream);
     return reply.send(intel);
+  });
+
+  /**
+   * GET /api/v1/athlete/:sport/:league/:athlete_id
+   * Deep player profile bio, physical measurements, college, draft, and statistics
+   */
+  fastify.get<{
+    Params: { sport: string; league: string; athlete_id: string };
+  }>('/athlete/:sport/:league/:athlete_id', {
+    schema: {
+      description: 'Get deep StatMuse/Reference-style athlete bio, season stats, height, weight, and college',
+      tags: ['Sports Intelligence'],
+      params: {
+        type: 'object',
+        properties: {
+          sport: { type: 'string' },
+          league: { type: 'string' },
+          athlete_id: { type: 'string' },
+        },
+        required: ['sport', 'league', 'athlete_id'],
+      },
+    },
+  }, async (request, reply) => {
+    const { sport, league, athlete_id } = request.params;
+    const profile = await sportsIntelService.getAthleteProfile(sport, league, athlete_id);
+    return reply.send(profile);
   });
 
   /**

@@ -948,6 +948,217 @@ a {
   padding: 0 24px;
 }
 
+/* Box Score Tables */
+.boxscore-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.boxscore-team-selector {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.boxscore-cat-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.boxscore-cat-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.boxscore-cat-btn:hover, .boxscore-cat-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.boxscore-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.boxscore-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.boxscore-table th {
+  background: #141722;
+  color: #94a3b8;
+  font-weight: 700;
+  padding: 10px 14px;
+  text-transform: uppercase;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.boxscore-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.boxscore-table tr:hover td {
+  background: rgba(145, 70, 255, 0.08);
+}
+
+.boxscore-athlete-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #fff;
+  transition: color 0.2s;
+}
+
+.boxscore-athlete-cell:hover {
+  color: #a78bfa;
+}
+
+.boxscore-athlete-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #1e2230;
+}
+
+/* Team Rosters */
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.roster-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.roster-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.roster-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #1e2230;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Player Profile Modal (StatMuse / Reference Grade) */
+.profile-modal-content {
+  background: #0d0f17;
+  border: 1px solid rgba(145, 70, 255, 0.3);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 620px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  position: relative;
+}
+
+.profile-hero {
+  background: linear-gradient(135deg, rgba(145, 70, 255, 0.25) 0%, rgba(0, 242, 254, 0.15) 100%), #141724;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.profile-hero img.profile-large-headshot {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #090a0f;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.profile-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.profile-pill {
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #cbd5e1;
+}
+
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  padding: 20px;
+}
+
+.profile-stat-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  text-align: center;
+}
+
+.profile-stat-val {
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.profile-stat-lbl {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
 .embed-panel {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);

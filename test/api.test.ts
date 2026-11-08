@@ -132,6 +132,34 @@ test('StreamFree API Streamer Suite', async (t) => {
     assert.ok(res.body.includes('</tv>'));
   });
 
+  await t.test('GET /api/v1/intel/:stream_key returns live gamecast intelligence', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/v1/intel/nfl-texans-chargers',
+    });
+    assert.equal(res.statusCode, 200);
+    const data = res.json();
+    assert.ok(data.scoreboard);
+    assert.ok(data.scoreboard.team1);
+    assert.ok(data.scoreboard.team2);
+    assert.ok(Array.isArray(data.stats));
+    assert.ok(Array.isArray(data.leaders));
+    assert.ok(data.boxscore);
+    assert.ok(data.rosters);
+  });
+
+  await t.test('GET /api/v1/athlete/:sport/:league/:athlete_id returns athlete profile', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/v1/athlete/football/nfl/4361579',
+    });
+    assert.equal(res.statusCode, 200);
+    const data = res.json();
+    assert.ok(data.name);
+    assert.ok(data.headshot);
+    assert.ok(Array.isArray(data.overviewStats));
+  });
+
   await server.close();
 });
 

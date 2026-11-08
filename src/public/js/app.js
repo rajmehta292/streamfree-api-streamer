@@ -52,6 +52,20 @@ function setupEventListeners() {
     if (e.target === playerModal) closePlayerModal();
   });
 
+  // Athlete Profile Modal
+  const profileModal = document.getElementById('player-profile-modal');
+  const closeProfileBtn = document.getElementById('profile-modal-close-btn');
+  if (closeProfileBtn) {
+    closeProfileBtn.addEventListener('click', () => {
+      if (profileModal) profileModal.classList.remove('show');
+    });
+  }
+  if (profileModal) {
+    profileModal.addEventListener('click', (e) => {
+      if (e.target === profileModal) profileModal.classList.remove('show');
+    });
+  }
+
   // Modal actions
   document.getElementById('modal-popout-btn').addEventListener('click', () => {
     if (state.activeStream) {
@@ -407,11 +421,21 @@ function renderStreams() {
 }
 
 let modalChatEventSource = null;
+let currentIntel = null;
+let intelPollTimer = null;
+let activeBoxScoreTeam = 'team1';
+let activeBoxScoreCatIndex = 0;
+let activeRosterTeam = 'team1';
 
 // Open Watch Modal (Gamecast Hub)
 window.openPlayerModal = async function(streamKey) {
   const stream = state.streams.find(s => s.stream_key === streamKey);
   if (!stream) return;
+
+  if (intelPollTimer) {
+    clearInterval(intelPollTimer);
+    intelPollTimer = null;
+  }
 
   state.activeStream = stream;
   const modal = document.getElementById('player-modal');
@@ -443,17 +467,29 @@ window.openPlayerModal = async function(streamKey) {
   // Start live chat connection
   setupModalChat(stream.stream_key);
 
-  // Fetch Sports Intelligence (ESPN / StatMuse Live Stats & News)
+  // Initial fetch of Sports Intelligence (ESPN / StatMuse Live Stats & News)
+  await fetchStreamIntel(stream.stream_key);
+
+  // Start 15-second live polling loop for continuous updates
+  intelPollTimer = setInterval(() => {
+    if (state.activeStream && state.activeStream.stream_key === streamKey) {
+      fetchStreamIntel(streamKey);
+    }
+  }, 15000);
+};
+
+async function fetchStreamIntel(streamKey) {
   try {
-    const res = await fetch(`/api/v1/intel/${encodeURIComponent(stream.stream_key)}`);
+    const res = await fetch(`/api/v1/intel/${encodeURIComponent(streamKey)}`);
     if (res.ok) {
       const intel = await res.json();
+      currentIntel = intel;
       renderGamecastIntel(intel);
     }
   } catch (err) {
     console.error('Failed to load sports intelligence:', err);
   }
-};
+}
 
 function renderGamecastIntel(intel) {
   if (!intel) return;
@@ -462,6 +498,11 @@ function renderGamecastIntel(intel) {
   if (intel.scoreboard) {
     document.getElementById('sb-team1-score').textContent = intel.scoreboard.team1.score || '0';
     document.getElementById('sb-team2-score').textContent = intel.scoreboard.team2.score || '0';
+    if (intel.scoreboard.team1.name) document.getElementById('sb-team1-name').textContent = intel.scoreboard.team1.name;
+    if (intel.scoreboard.team2.name) document.getElementById('sb-team2-name').textContent = intel.scoreboard.team2.name;
+    if (intel.scoreboard.team1.logo) document.getElementById('sb-team1-logo').src = intel.scoreboard.team1.logo;
+    if (intel.scoreboard.team2.logo) document.getElementById('sb-team2-logo').src = intel.scoreboard.team2.logo;
+
     if (intel.scoreboard.team1.record) document.getElementById('sb-team1-record').textContent = intel.scoreboard.team1.record;
     if (intel.scoreboard.team2.record) document.getElementById('sb-team2-record').textContent = intel.scoreboard.team2.record;
     if (intel.scoreboard.detail) document.getElementById('sb-status-text').textContent = intel.scoreboard.detail;
@@ -492,7 +533,13 @@ function renderGamecastIntel(intel) {
     if (intel.gameInfo.broadcast) document.getElementById('sb-broadcast-text').textContent = `📺 ${intel.gameInfo.broadcast}`;
   }
 
-  // 4. Tab 1: Live Stats Comparison (ESPN / Yahoo style)
+  // 4. Tab 0: Box Score (Player by Player with Category Pills)
+  renderBoxScore(intel.boxscore);
+
+  // 5. Tab 0.5: Team Rosters
+  renderRosters(intel.rosters);
+
+  // 6. Tab 1: Live Stats Comparison (ESPN / Yahoo style)
   const statsContainer = document.getElementById('gamecast-stats-container');
   if (intel.stats && intel.stats.length > 0) {
     statsContainer.innerHTML = intel.stats.map(s => `
@@ -508,11 +555,11 @@ function renderGamecastIntel(intel) {
     statsContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">Live statistics will appear once play starts.</div>`;
   }
 
-  // 5. Tab 2: Key Leaders (StatMuse / Reference style)
+  // 7. Tab 2: Key Leaders (StatMuse / Reference style)
   const leadersContainer = document.getElementById('gamecast-leaders-container');
   if (intel.leaders && intel.leaders.length > 0) {
     leadersContainer.innerHTML = intel.leaders.map(l => `
-      <div class="leader-card">
+      <div class="leader-card" style="cursor: pointer;" onclick="openAthleteProfile('${escapeHtml(l.athlete.id)}', '${escapeHtml(intel.sportPath || '')}', '${escapeHtml(l.athlete.name)}')">
         <img class="leader-avatar" src="${escapeHtml(l.athlete.headshot)}" alt="${escapeHtml(l.athlete.name)}" onerror="this.src='https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90'">
         <div class="leader-info">
           <span class="leader-cat">${escapeHtml(l.category)}</span>
@@ -526,7 +573,7 @@ function renderGamecastIntel(intel) {
     leadersContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">Key leaders will be highlighted during game action.</div>`;
   }
 
-  // 6. Tab 3: Scoring Timeline
+  // 8. Tab 3: Scoring Timeline
   const scoringContainer = document.getElementById('gamecast-scoring-container');
   if (intel.scoringPlays && intel.scoringPlays.length > 0) {
     scoringContainer.innerHTML = intel.scoringPlays.map(p => `
@@ -542,7 +589,7 @@ function renderGamecastIntel(intel) {
     scoringContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">No scoring plays yet.</div>`;
   }
 
-  // 7. Tab 4: News & Analysis
+  // 9. Tab 4: News & Analysis
   const newsContainer = document.getElementById('gamecast-news-container');
   if (intel.news && intel.news.length > 0) {
     newsContainer.innerHTML = intel.news.map(n => `
@@ -559,6 +606,230 @@ function renderGamecastIntel(intel) {
     newsContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 16px;">No recent editorial news found for this match.</div>`;
   }
 }
+
+// Render Box Score Component
+function renderBoxScore(boxscore) {
+  const teamNav = document.getElementById('boxscore-team-nav');
+  const catPills = document.getElementById('boxscore-cat-pills');
+  const tableContainer = document.getElementById('boxscore-table-container');
+  if (!teamNav || !catPills || !tableContainer) return;
+
+  if (!boxscore || (!boxscore.team1 && !boxscore.team2)) {
+    tableContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 24px;">Box score statistics will be populated during live play.</div>`;
+    return;
+  }
+
+  const team1 = boxscore.team1 || { teamName: 'Team 1', categories: [] };
+  const team2 = boxscore.team2 || { teamName: 'Team 2', categories: [] };
+
+  // Render Team Selector buttons
+  teamNav.innerHTML = `
+    <button class="btn ${activeBoxScoreTeam === 'team1' ? 'btn-primary' : 'btn-outline'}" id="bs-btn-t1" style="font-size: 13px; padding: 6px 14px;">
+      ${escapeHtml(team1.teamName)}
+    </button>
+    <button class="btn ${activeBoxScoreTeam === 'team2' ? 'btn-primary' : 'btn-outline'}" id="bs-btn-t2" style="font-size: 13px; padding: 6px 14px;">
+      ${escapeHtml(team2.teamName)}
+    </button>
+  `;
+
+  document.getElementById('bs-btn-t1').addEventListener('click', () => {
+    activeBoxScoreTeam = 'team1';
+    activeBoxScoreCatIndex = 0;
+    renderBoxScore(boxscore);
+  });
+  document.getElementById('bs-btn-t2').addEventListener('click', () => {
+    activeBoxScoreTeam = 'team2';
+    activeBoxScoreCatIndex = 0;
+    renderBoxScore(boxscore);
+  });
+
+  const curTeam = activeBoxScoreTeam === 'team1' ? team1 : team2;
+  const categories = curTeam.categories || [];
+
+  if (categories.length === 0) {
+    catPills.innerHTML = '';
+    tableContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 24px;">No box score category data available for ${escapeHtml(curTeam.teamName)}.</div>`;
+    return;
+  }
+
+  if (activeBoxScoreCatIndex >= categories.length) {
+    activeBoxScoreCatIndex = 0;
+  }
+
+  // Render Category Filter Pills
+  catPills.innerHTML = categories.map((cat, idx) => `
+    <button class="boxscore-cat-btn ${idx === activeBoxScoreCatIndex ? 'active' : ''}" data-idx="${idx}">
+      ${escapeHtml(cat.displayName || cat.name)}
+    </button>
+  `).join('');
+
+  catPills.querySelectorAll('.boxscore-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeBoxScoreCatIndex = parseInt(btn.dataset.idx, 10) || 0;
+      renderBoxScore(boxscore);
+    });
+  });
+
+  // Render Category Table
+  const currentCat = categories[activeBoxScoreCatIndex];
+  if (!currentCat || !currentCat.athletes || currentCat.athletes.length === 0) {
+    tableContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 24px;">No player statistics recorded for ${escapeHtml(currentCat?.displayName || 'this category')}.</div>`;
+    return;
+  }
+
+  const headers = ['ATHLETE', ...(currentCat.labels || [])];
+  const sportPath = currentIntel?.sportPath || '';
+
+  const tableHtml = `
+    <table class="boxscore-table">
+      <thead>
+        <tr>
+          ${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${currentCat.athletes.map(ath => `
+          <tr>
+            <td>
+              <div class="boxscore-athlete-cell" onclick="openAthleteProfile('${escapeHtml(ath.id)}', '${escapeHtml(sportPath)}', '${escapeHtml(ath.name)}')">
+                <img class="boxscore-athlete-avatar" src="${escapeHtml(ath.headshot)}" alt="${escapeHtml(ath.name)}" onerror="this.src='https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90'">
+                <span>
+                  ${escapeHtml(ath.name)}
+                  ${ath.jersey ? `<span style="color: #a78bfa; font-weight: 700;">#${escapeHtml(ath.jersey)}</span>` : ''}
+                  ${ath.position ? `<span style="font-size: 11px; color: var(--text-dim); font-weight: 600;">${escapeHtml(ath.position)}</span>` : ''}
+                </span>
+              </div>
+            </td>
+            ${(ath.stats || []).map(val => `<td>${escapeHtml(val)}</td>`).join('')}
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  tableContainer.innerHTML = tableHtml;
+}
+
+// Render Team Rosters Component
+function renderRosters(rosters) {
+  const rosterNav = document.getElementById('roster-team-nav');
+  const gridContainer = document.getElementById('roster-grid-container');
+  if (!rosterNav || !gridContainer) return;
+
+  if (!rosters || (!rosters.team1 && !rosters.team2)) {
+    gridContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 24px;">Roster information will be available once confirmed.</div>`;
+    return;
+  }
+
+  const t1Name = currentIntel?.scoreboard?.team1?.name || 'Team 1';
+  const t2Name = currentIntel?.scoreboard?.team2?.name || 'Team 2';
+
+  rosterNav.innerHTML = `
+    <button class="btn ${activeRosterTeam === 'team1' ? 'btn-primary' : 'btn-outline'}" id="ros-btn-t1" style="font-size: 13px; padding: 6px 14px;">
+      ${escapeHtml(t1Name)} Roster
+    </button>
+    <button class="btn ${activeRosterTeam === 'team2' ? 'btn-primary' : 'btn-outline'}" id="ros-btn-t2" style="font-size: 13px; padding: 6px 14px;">
+      ${escapeHtml(t2Name)} Roster
+    </button>
+  `;
+
+  document.getElementById('ros-btn-t1').addEventListener('click', () => {
+    activeRosterTeam = 'team1';
+    renderRosters(rosters);
+  });
+  document.getElementById('ros-btn-t2').addEventListener('click', () => {
+    activeRosterTeam = 'team2';
+    renderRosters(rosters);
+  });
+
+  const athletes = activeRosterTeam === 'team1' ? (rosters.team1 || []) : (rosters.team2 || []);
+  const sportPath = currentIntel?.sportPath || '';
+
+  if (athletes.length === 0) {
+    gridContainer.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 24px;">No roster members found for this team.</div>`;
+    return;
+  }
+
+  gridContainer.innerHTML = athletes.map(ath => `
+    <div class="roster-card" onclick="openAthleteProfile('${escapeHtml(ath.id)}', '${escapeHtml(sportPath)}', '${escapeHtml(ath.name)}')">
+      <img class="roster-avatar" src="${escapeHtml(ath.headshot)}" alt="${escapeHtml(ath.name)}" onerror="this.src='https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90'">
+      <div style="overflow: hidden;">
+        <div style="font-weight: 800; color: #fff; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
+          ${escapeHtml(ath.name)}
+        </div>
+        <div style="font-size: 11px; color: #a78bfa; font-weight: 700;">
+          ${ath.jersey ? '#' + escapeHtml(ath.jersey) + ' • ' : ''}${escapeHtml(ath.position || 'Player')}
+        </div>
+        ${ath.teamName ? `<div style="font-size: 10px; color: var(--text-dim); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${escapeHtml(ath.teamName)}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// Open StatMuse / Basketball-Reference Grade Athlete Profile
+window.openAthleteProfile = async function(athleteId, sportPath, fallbackName) {
+  const modal = document.getElementById('player-profile-modal');
+  if (!modal) return;
+
+  // Reset & Show Modal Loading State
+  document.getElementById('prof-name').textContent = fallbackName || 'Loading Athlete...';
+  document.getElementById('prof-jersey').textContent = '#--';
+  document.getElementById('prof-team-pos').textContent = 'Profile Loading...';
+  document.getElementById('prof-ht-wt').textContent = 'Ht/Wt: --';
+  document.getElementById('prof-age').textContent = 'Age: --';
+  document.getElementById('prof-college').textContent = 'College: --';
+  document.getElementById('prof-exp').textContent = 'Exp: --';
+  document.getElementById('prof-stats-grid').innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-dim); padding: 20px;">Fetching player metrics...</div>`;
+  document.getElementById('prof-bio-text').textContent = 'Loading official player background and career information...';
+  modal.classList.add('show');
+
+  // Parse sport and league (e.g. 'football/nfl' -> sport='football', league='nfl')
+  let sport = 'football';
+  let league = 'nfl';
+  if (sportPath && sportPath.includes('/')) {
+    const parts = sportPath.split('/');
+    sport = parts[0];
+    league = parts[1];
+  } else if (state.activeStream?.category) {
+    sport = state.activeStream.category;
+    league = state.activeStream.league || (sport === 'football' ? 'nfl' : 'nba');
+  }
+
+  try {
+    const res = await fetch(`/api/v1/athlete/${encodeURIComponent(sport)}/${encodeURIComponent(league)}/${encodeURIComponent(athleteId)}`);
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('prof-name').textContent = data.name || fallbackName;
+      document.getElementById('prof-jersey').textContent = data.jersey ? `#${data.jersey}` : '';
+      document.getElementById('prof-team-pos').textContent = `${data.teamName || 'Pro Team'} • ${data.position || 'Athlete'}`;
+      document.getElementById('prof-ht-wt').textContent = `Ht/Wt: ${data.height || '--'}, ${data.weight || '--'}`;
+      document.getElementById('prof-age').textContent = data.age ? `Age: ${data.age}` : 'Age: --';
+      document.getElementById('prof-college').textContent = `College: ${data.college || 'N/A'}`;
+      document.getElementById('prof-exp').textContent = `Exp: ${data.experience || 'Pro'}`;
+      document.getElementById('prof-headshot').src = data.headshot || 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=120&h=90';
+
+      const statsGrid = document.getElementById('prof-stats-grid');
+      if (data.overviewStats && data.overviewStats.length > 0) {
+        statsGrid.innerHTML = data.overviewStats.map(s => `
+          <div class="profile-stat-box">
+            <div class="profile-stat-val">${escapeHtml(s.value)}</div>
+            <div class="profile-stat-lbl">${escapeHtml(s.label)}</div>
+          </div>
+        `).join('');
+      } else {
+        statsGrid.innerHTML = `
+          <div class="profile-stat-box"><div class="profile-stat-val">Active</div><div class="profile-stat-lbl">Status</div></div>
+          <div class="profile-stat-box"><div class="profile-stat-val">Pro</div><div class="profile-stat-lbl">Tier</div></div>
+          <div class="profile-stat-box"><div class="profile-stat-val">Verified</div><div class="profile-stat-lbl">Roster</div></div>
+        `;
+      }
+
+      document.getElementById('prof-bio-text').textContent = data.biography || `${data.name} is an active competitor currently featuring in live league action.`;
+    }
+  } catch (err) {
+    document.getElementById('prof-bio-text').textContent = `Overview for ${fallbackName || 'Player'}. Complete seasonal analytics will be synced.`;
+  }
+};
 
 // Modal Live Chat
 function setupModalChat(streamKey) {
@@ -607,6 +878,11 @@ function closePlayerModal() {
   iframe.src = '';
   modal.classList.remove('show');
   state.activeStream = null;
+
+  if (intelPollTimer) {
+    clearInterval(intelPollTimer);
+    intelPollTimer = null;
+  }
 
   if (modalChatEventSource) {
     modalChatEventSource.close();
